@@ -1180,8 +1180,7 @@
     
     <script>
         (function() {
-            // Configuration (Password hashed to Base64 to prevent direct reading)
-            const CORRECT_PASS_HASH = "TXV3aGFheXVraWk=";
+            // Configuration (Server-side verification enabled)
             
             // Elements
             const loader = document.getElementById('loader');
@@ -1274,41 +1273,52 @@
                 });
             }
             
-            // Login Function
-            function attemptLogin() {
+            // Login Function (Now uses secure serverless backend)
+            async function attemptLogin() {
                 const password = passwordInput.value;
+                loginBtn.disabled = true;
+                loginBtn.innerHTML = '<span class="btn-text">Opening Garden...</span> <i class="fas fa-spinner fa-spin"></i>';
                 
-                // Simple base64 decode comparison
-                if (btoa(password) === CORRECT_PASS_HASH) {
-                    isLoggedIn = true;
-                    errorMsg.classList.remove('show');
-                    loginSection.classList.add('fade-out');
+                try {
+                    const response = await fetch('/.netlify/functions/login', {
+                        method: 'POST',
+                        body: JSON.stringify({ password }),
+                        headers: { 'Content-Type': 'application/json' }
+                    });
                     
-                    // Handle Remember Me
-                    if (rememberCheckbox && rememberCheckbox.checked) {
-                        localStorage.setItem('lyraa_garden_auth', 'true');
+                    const data = await response.json();
+                    
+                    if (data.success) {
+                        isLoggedIn = true;
+                        errorMsg.classList.remove('show');
+                        loginSection.classList.add('fade-out');
+                        
+                        if (rememberCheckbox && rememberCheckbox.checked) {
+                            localStorage.setItem('lyraa_garden_auth', 'true');
+                        }
+                        
+                        if (bgMusic && bgMusic.paused) {
+                            bgMusic.play().then(() => {
+                                isMusicPlaying = true;
+                                if (musicBtn) musicBtn.innerHTML = '<i class="fas fa-pause"></i>';
+                            }).catch(err => console.log("Audio play failed", err));
+                        }
+                        
+                        setTimeout(() => {
+                            loginSection.style.display = 'none';
+                            mainWebsite.classList.add('active');
+                        }, 800);
+                    } else {
+                        throw new Error(data.message || 'Wrong password');
                     }
-                    
-                    // Attempt to play background music upon successful login
-                    if (bgMusic && bgMusic.paused) {
-                        bgMusic.play().then(() => {
-                            isMusicPlaying = true;
-                            if (musicBtn) musicBtn.innerHTML = '<i class="fas fa-pause"></i>';
-                        }).catch(err => console.log("Audio play failed, user interaction may be required.", err));
-                    }
-                    
-                    setTimeout(() => {
-                        loginSection.style.display = 'none';
-                        mainWebsite.classList.add('active');
-                    }, 800);
-                } else {
-                    errorMsg.textContent = '❌ Wrong password, my love. Try again.';
+                } catch (error) {
+                    errorMsg.textContent = '❌ ' + (error.message === 'Wrong password' ? 'Wrong password, my love. Try again.' : 'Connection error. Please try again.');
                     errorMsg.classList.add('show');
                     passwordInput.style.borderColor = '#c45d42';
-                    
-                    setTimeout(() => {
-                        passwordInput.style.borderColor = '';
-                    }, 500);
+                    setTimeout(() => { passwordInput.style.borderColor = ''; }, 500);
+                } finally {
+                    loginBtn.disabled = false;
+                    loginBtn.innerHTML = '<span class="btn-text">Enter The Garden</span> <i class="fas fa-arrow-right btn-icon"></i>';
                 }
             }
             
