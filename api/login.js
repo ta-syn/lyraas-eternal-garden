@@ -1,27 +1,19 @@
-exports.handler = async (event, context) => {
-  if (event.httpMethod !== "POST") {
-    return { statusCode: 405, body: "Method Not Allowed" };
-  }
-
-  try {
-    const { password } = JSON.parse(event.body);
+module.exports = (req, res) => {
+  // Set CORS headers for local development if needed, 
+  // though Vercel handles this well in production
+  if (req.method === 'POST') {
+    const { password } = req.body;
     const correctPassword = process.env.GARDEN_PASSWORD;
 
     if (password === correctPassword) {
-      return {
-        statusCode: 200,
-        body: JSON.stringify({ success: true }),
-      };
+      return res.status(200).json({ success: true });
     } else {
-      return {
-        statusCode: 401,
-        body: JSON.stringify({ success: false, message: "Wrong password" }),
-      };
+      return res.status(401).json({ 
+        success: false, 
+        message: 'Wrong password' 
+      });
     }
-  } catch (error) {
-    return {
-      statusCode: 400,
-      body: JSON.stringify({ success: false, message: "Invalid request" }),
-    };
+  } else {
+    return res.status(405).json({ message: 'Method Not Allowed' });
   }
 };
